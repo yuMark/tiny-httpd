@@ -1,5 +1,7 @@
 TinyHttpd - 对原版加了一些修改和bug修复
 ===================================
+网上参考TinyHttpd 源码解析：https://www.jianshu.com/p/18cfd6019296
+
 
 实现一个webServer要做的事：
 

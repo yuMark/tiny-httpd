@@ -48,6 +48,31 @@ int startup(u_short *);
 void unimplemented(int);
 void readBufferBeforeSend(int);
 
+
+
+
+/**********************************************************************/
+/* 回复 测试
+/**********************************************************************/
+void test_resp(int connfd)
+{
+    char buf[1024];
+
+    strcpy(buf, "HTTP/1.0 200 OK\r\n");
+    send(connfd, buf, strlen(buf), 0);
+    strcpy(buf, SERVER_STRING);
+    send(connfd, buf, strlen(buf), 0);
+    sprintf(buf, "Content-Type: text/html\r\n");
+    send(connfd, buf, strlen(buf), 0);
+	
+	sprintf(buf, "This is the test resp!\r\n");
+	send(connfd, buf, strlen(buf), 0);
+	
+    strcpy(buf, "\r\n");
+    send(connfd, buf, strlen(buf), 0);
+}
+
+
 /**********************************************************************/
 /* A request has caused a call to accept() on the server port to
  * return.  Process the request appropriately.
@@ -55,6 +80,8 @@ void readBufferBeforeSend(int);
 /**********************************************************************/
 void accept_request(int connfd)
 {
+	printf("accept_request\r\n");
+	
     char buf[1024]; //缓冲从socket中读取的字节
     int numchars; //读取字节数
     char method[255]; //请求方法
@@ -110,7 +137,14 @@ void accept_request(int connfd)
         i++; j++;
     }
     url[i] = '\0';
-
+	
+	/* 读取到URL */
+	printf("url = %s\r\n", url);
+	readBufferBeforeSend(connfd);		// 退出前必须把剩下的内容读完 否则客户端提示连接错误
+	test_resp(connfd);					// 测试回复
+	goto l_exit_conn;					// 退出
+	
+	
     //如果这个请求是一个 GET 方法的话
     //TODO 对于不是GET方法的请求其实也是需要解析query_string的，
     //TODO 否则对于POST:http://10.33.106.82:8008/check.cgi?name=foo 带参数的情况path解析是失败的。
@@ -150,7 +184,9 @@ void accept_request(int connfd)
     //int stat(const char * file_name, struct stat *buf);
     //stat()用来将参数file_name 所指的文件状态, 复制到参数buf 所指的结构中。执行成功则返回0，失败返回-1，错误代码存于errno。
     if (stat(path, &st) == -1) {
-        //如果不存在，那把这次 http 的请求后续的内容(head 和 body)全部读完并忽略
+		printf("%s no exist\r\n", path);
+		
+		//如果不存在，那把这次 http 的请求后续的内容(head 和 body)全部读完并忽略
         readBufferBeforeSend(connfd);
 
         //返回方法不存在
@@ -178,7 +214,8 @@ void accept_request(int connfd)
             execute_cgi(connfd, path, method, query_string);
         }
     }
-
+	
+l_exit_conn:
     close(connfd);
 }
 
@@ -261,6 +298,8 @@ void error_die(const char *sc)
 /**********************************************************************/
 void execute_cgi(int connfd, const char *path, const char *method, const char *query_string)
 {
+	printf("execute_cgi: path = %s\r\n", path);
+	
     char buf[1024];
     int cgi_output[2]; //重定向输出的管道
     int cgi_input[2]; //重定向输入的管道
@@ -634,7 +673,9 @@ void unimplemented(int connfd)
 int main(void)
 {
     int listenfd = -1;
-    u_short port = 8008;
+    // u_short port = 8008;
+	u_short port = 80;			// 设置HTTP端口号
+
     int connfd = -1;
 
     struct sockaddr_in client;
